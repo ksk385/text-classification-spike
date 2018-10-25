@@ -15,6 +15,8 @@ parser.add_argument('--feature', choices=['count', 'tf_idf_word', 'tf_idf_ngram'
                     default='count', nargs='+')
 parser.add_argument('--classifier', choices=['naive_bayes'],
                     default='naive_bayes')
+parser.add_argument('--newdata', action='store_true',
+                   help='tests model on new data')
 
 args = parser.parse_args()
 print(args)
@@ -75,6 +77,12 @@ array_of_texts = [" ".join(sentence_array) for sentence_array in trainDF.text.va
 array_of_training_texts = [" ".join(sentence_array) for sentence_array in train_x]
 array_of_validation_texts = [" ".join(sentence_array) for sentence_array in valid_x]
 
+array_of_new_data = []
+if args.newdata:
+    new_data = open('data/new_data.txt').read()
+    for i, line in enumerate(new_data.split('\n')):
+        array_of_new_data.append(line)
+
 if args.verbose:
     print(f'Raw Joined Data')
     print(f'*******')
@@ -103,6 +111,9 @@ if 'count' in args.feature:
         print(f'Train X: {xtrain_count[0:2]}')
         print(f'Valid X: {xvalid_count[0:2]}')
         print(f'*******')
+    
+    if args.newdata:
+        xnewdata_count = count_vect.transform(array_of_new_data)
 
 if 'tf_idf_word' in args.feature:
     # word level tf-idf
@@ -163,12 +174,19 @@ if 'tf_idf_char' in args.feature:
         print(f'Valid X: {xvalid_tfidf_ngram_chars[0:2]}')
         print(f'*******')
 
-def train_model(classifier, feature_vector_train, label, feature_vector_valid, is_neural_net=False):
+def train_model(classifier, feature_vector_train, label, feature_vector_valid, new_data_vector=None, is_neural_net=False):
     # fit the training dataset on the classifier
     classifier.fit(feature_vector_train, label)
     
     # predict the labels on validation dataset
     predictions = classifier.predict(feature_vector_valid)
+
+    if args.newdata:
+        new_data_predictions = classifier.predict(new_data_vector)
+        if args.verbose:
+            print(f'New Data Predictions: {new_data_predictions[60:80]}')
+            print(f'Raw New Data:')
+            print("\n*".join(array_of_new_data[60:80]))
     
     if is_neural_net:
         predictions = predictions.argmax(axis=-1)
@@ -179,7 +197,10 @@ if args.classifier == 'naive_bayes':
 
     if 'count' in args.feature:
         # Naive Bayes on Count Vectors
-        accuracy = train_model(naive_bayes.MultinomialNB(), xtrain_count, train_y, xvalid_count)
+        new_data_vector = None
+        if args.newdata:
+            new_data_vector = xnewdata_count
+        accuracy = train_model(naive_bayes.MultinomialNB(), xtrain_count, train_y, xvalid_count, new_data_vector)
         print(f'NB, Count Vectors: {accuracy}')
 
     if 'tf_idf_word' in args.feature:
