@@ -113,7 +113,7 @@ if 'count' in args.feature:
         print(f'*******')
     
     if args.newdata:
-        xnewdata_count = count_vect.transform(array_of_new_data)
+        xnewdata_vector = count_vect.transform(array_of_new_data)
 
 if 'tf_idf_word' in args.feature:
     # word level tf-idf
@@ -134,6 +134,9 @@ if 'tf_idf_word' in args.feature:
         print(f'Train X: {xtrain_tfidf[0:2]}')
         print(f'Valid X: {xvalid_tfidf[0:2]}')
         print(f'*******')
+    
+    if args.newdata:
+        xnewdata_vector = tfidf_vect.transform(array_of_new_data)
 
 if 'tf_idf_ngram' in args.feature:
     # ngram level tf-idf 
@@ -154,6 +157,9 @@ if 'tf_idf_ngram' in args.feature:
         print(f'Train X: {xtrain_tfidf_ngram[0:2]}')
         print(f'Valid X: {xvalid_tfidf_ngram[0:2]}')
         print(f'*******')
+    
+    if args.newdata:
+        xnewdata_vector = tfidf_vect_ngram.transform(array_of_new_data)
 
 if 'tf_idf_char' in args.feature:
     # characters level tf-idf
@@ -173,6 +179,9 @@ if 'tf_idf_char' in args.feature:
         print(f'Train X: {xtrain_tfidf_ngram_chars[0:2]}')
         print(f'Valid X: {xvalid_tfidf_ngram_chars[0:2]}')
         print(f'*******')
+    
+    if args.newdata:
+        xnewdata_vector = tfidf_vect_ngram_chars.transform(array_of_new_data)
 
 def train_model(classifier, feature_vector_train, label, feature_vector_valid, new_data_vector=None, is_neural_net=False):
     # fit the training dataset on the classifier
@@ -194,26 +203,25 @@ def train_model(classifier, feature_vector_train, label, feature_vector_valid, n
     return metrics.accuracy_score(predictions, valid_y)
 
 if args.classifier == 'naive_bayes':
-
+    new_data_vector = None
+    if args.newdata:
+        new_data_vector = xnewdata_vector
     if 'count' in args.feature:
         # Naive Bayes on Count Vectors
-        new_data_vector = None
-        if args.newdata:
-            new_data_vector = xnewdata_count
         accuracy = train_model(naive_bayes.MultinomialNB(), xtrain_count, train_y, xvalid_count, new_data_vector)
         print(f'NB, Count Vectors: {accuracy}')
 
     if 'tf_idf_word' in args.feature:
         # Naive Bayes on Word Level TF IDF Vectors
-        accuracy = train_model(naive_bayes.MultinomialNB(), xtrain_tfidf, train_y, xvalid_tfidf)
+        accuracy = train_model(naive_bayes.MultinomialNB(), xtrain_tfidf, train_y, xvalid_tfidf, new_data_vector)
         print(f'NB, WordLevel TF-IDF: {accuracy}')
 
     if 'tf_idf_ngram' in args.feature:
         # Naive Bayes on Ngram Level TF IDF Vectors
-        accuracy = train_model(naive_bayes.MultinomialNB(), xtrain_tfidf_ngram, train_y, xvalid_tfidf_ngram)
+        accuracy = train_model(naive_bayes.MultinomialNB(), xtrain_tfidf_ngram, train_y, xvalid_tfidf_ngram, new_data_vector)
         print(f'NB, N-Gram Vectors: {accuracy}')
 
     if 'tf_idf_char' in args.feature:
         # Naive Bayes on Character Level TF IDF Vectors
-        accuracy = train_model(naive_bayes.MultinomialNB(), xtrain_tfidf_ngram_chars, train_y, xvalid_tfidf_ngram_chars)
+        accuracy = train_model(naive_bayes.MultinomialNB(), xtrain_tfidf_ngram_chars, train_y, xvalid_tfidf_ngram_chars, new_data_vector)
         print(f'NB, CharLevel Vectors: {accuracy}')
