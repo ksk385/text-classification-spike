@@ -11,8 +11,11 @@ import argparse
 parser = argparse.ArgumentParser(description='Text Classification.')
 parser.add_argument('--verbose', action='store_true',
                    help='displays debug logging')
+parser.add_argument('--feature', choices=['count', 'tfidf_word'],
+                    default='count')
 
 args = parser.parse_args()
+print(args)
 
 # load the dataset
 # sample data
@@ -27,7 +30,8 @@ for i, line in enumerate(data.split('\n')):
 if args.verbose:
     print(f'Raw Split Data')
     print(f'*******')
-    print(labels[0:2], texts[0:2])
+    print(f'Labels: {labels[0:2]}')
+    print(f'Texts: {texts[0:2]}')
     print(f'*******')
 
 # create a data frame using texts and labels
@@ -51,6 +55,7 @@ if args.verbose:
     print(f'Train Y: {train_y}')
     print(f'*******')
     print(f'Valid Y: {valid_y}')
+    print(f'*******')
 
 # label encode the target variable 
 encoder = preprocessing.LabelEncoder()
@@ -63,3 +68,57 @@ if args.verbose:
     print(f'Labels Encoded Train Y: {train_y}')
     print(f'Labels Encoded Valid Y: {valid_y}')
     print(f'*******')
+
+if args.feature == 'count':
+    # create a count vectorizer object 
+    count_vect = CountVectorizer(analyzer='word', token_pattern=r'\w{1,}')
+    array_of_texts = [" ".join(sentence_array) for sentence_array in trainDF.text.values]
+    array_of_training_texts = [" ".join(sentence_array) for sentence_array in train_x]
+    array_of_validation_texts = [" ".join(sentence_array) for sentence_array in valid_x]
+
+    if args.verbose:
+        print(f'Raw Joined Data')
+        print(f'*******')
+        print(f'Array of Texts: {array_of_texts[0:2]}')
+        print(f'*******')
+
+    count_vect.fit(array_of_texts)
+
+    if args.verbose:
+        print(f'Count Vect (after fit)')
+        print(f'{count_vect.get_feature_names()[0:10]}')
+        print(f'*******')
+
+    # transform the training and validation data using count vectorizer object
+    xtrain_count =  count_vect.transform(array_of_training_texts)
+    xvalid_count =  count_vect.transform(array_of_validation_texts)
+    
+    if args.verbose:
+        print(f'Count Features')
+        print(f'*******')
+        print(f'Train X: {xtrain_count[0:2]}')
+        print(f'Valid X: {xvalid_count[0:2]}')
+        print(f'*******')
+
+if args.feature == 'tfidf_word':
+    # load the pre-trained word-embedding vectors 
+    embeddings_index = {}
+    for i, line in enumerate(open('data/wiki-news-300d-1M.vec')):
+        values = line.split()
+        embeddings_index[values[0]] = numpy.asarray(values[1:], dtype='float32')
+
+    # create a tokenizer 
+    token = text.Tokenizer()
+    token.fit_on_texts(trainDF['text'])
+    word_index = token.word_index
+
+    # convert text to sequence of tokens and pad them to ensure equal length vectors 
+    train_seq_x = sequence.pad_sequences(token.texts_to_sequences(train_x), maxlen=70)
+    valid_seq_x = sequence.pad_sequences(token.texts_to_sequences(valid_x), maxlen=70)
+
+    # create token-embedding mapping
+    embedding_matrix = numpy.zeros((len(word_index) + 1, 300))
+    for word, i in word_index.items():
+        embedding_vector = embeddings_index.get(word)
+        if embedding_vector is not None:
+            embedding_matrix[i] = embedding_vector
