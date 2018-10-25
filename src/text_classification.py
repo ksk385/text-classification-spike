@@ -11,7 +11,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Text Classification.')
 parser.add_argument('--verbose', action='store_true',
                    help='displays debug logging')
-parser.add_argument('--feature', choices=['count', 'tfidf_word'],
+parser.add_argument('--feature', choices=['count', 'tf_idf_word', 'tf_idf_ngram', 'tf_idf_char'],
                     default='count')
 
 args = parser.parse_args()
@@ -69,19 +69,21 @@ if args.verbose:
     print(f'Labels Encoded Valid Y: {valid_y}')
     print(f'*******')
 
+array_of_texts = [" ".join(sentence_array) for sentence_array in trainDF.text.values]
+array_of_training_texts = [" ".join(sentence_array) for sentence_array in train_x]
+array_of_validation_texts = [" ".join(sentence_array) for sentence_array in valid_x]
+
+if args.verbose:
+    print(f'Raw Joined Data')
+    print(f'*******')
+    print(f'Array of Texts: {array_of_texts[0:2]}')
+    print(f'*******')
+
+
 if args.feature == 'count':
     # create a count vectorizer object 
     count_vect = CountVectorizer(analyzer='word', token_pattern=r'\w{1,}')
-    array_of_texts = [" ".join(sentence_array) for sentence_array in trainDF.text.values]
-    array_of_training_texts = [" ".join(sentence_array) for sentence_array in train_x]
-    array_of_validation_texts = [" ".join(sentence_array) for sentence_array in valid_x]
-
-    if args.verbose:
-        print(f'Raw Joined Data')
-        print(f'*******')
-        print(f'Array of Texts: {array_of_texts[0:2]}')
-        print(f'*******')
-
+    
     count_vect.fit(array_of_texts)
 
     if args.verbose:
@@ -100,25 +102,61 @@ if args.feature == 'count':
         print(f'Valid X: {xvalid_count[0:2]}')
         print(f'*******')
 
-if args.feature == 'tfidf_word':
-    # load the pre-trained word-embedding vectors 
-    embeddings_index = {}
-    for i, line in enumerate(open('data/wiki-news-300d-1M.vec')):
-        values = line.split()
-        embeddings_index[values[0]] = numpy.asarray(values[1:], dtype='float32')
+if args.feature == 'tf_idf_word':
+    # word level tf-idf
+    tfidf_vect = TfidfVectorizer(analyzer='word', token_pattern=r'\w{1,}', max_features=5000)
+    tfidf_vect.fit(array_of_texts)
 
-    # create a tokenizer 
-    token = text.Tokenizer()
-    token.fit_on_texts(trainDF['text'])
-    word_index = token.word_index
+    if args.verbose:
+        print(f'TF-IDF Vect (after fit)')
+        print(f'{tfidf_vect.get_feature_names()[0:10]}')
+        print(f'*******')
 
-    # convert text to sequence of tokens and pad them to ensure equal length vectors 
-    train_seq_x = sequence.pad_sequences(token.texts_to_sequences(train_x), maxlen=70)
-    valid_seq_x = sequence.pad_sequences(token.texts_to_sequences(valid_x), maxlen=70)
+    xtrain_tfidf =  tfidf_vect.transform(array_of_training_texts)
+    xvalid_tfidf =  tfidf_vect.transform(array_of_validation_texts)
+    
+    if args.verbose:
+        print(f'TF-IDF Features')
+        print(f'*******')
+        print(f'Train X: {xtrain_tfidf[0:2]}')
+        print(f'Valid X: {xvalid_tfidf[0:2]}')
+        print(f'*******')
 
-    # create token-embedding mapping
-    embedding_matrix = numpy.zeros((len(word_index) + 1, 300))
-    for word, i in word_index.items():
-        embedding_vector = embeddings_index.get(word)
-        if embedding_vector is not None:
-            embedding_matrix[i] = embedding_vector
+if args.feature == 'tf_idf_ngram':
+    # ngram level tf-idf 
+    tfidf_vect_ngram = TfidfVectorizer(analyzer='word', token_pattern=r'\w{1,}', ngram_range=(2,3), max_features=5000)
+    tfidf_vect_ngram.fit(array_of_texts)
+
+    if args.verbose:
+        print(f'TF-IDF Vect (after fit)')
+        print(f'{tfidf_vect_ngram.get_feature_names()[0:10]}')
+        print(f'*******')
+
+    xtrain_tfidf_ngram =  tfidf_vect_ngram.transform(array_of_training_texts)
+    xvalid_tfidf_ngram =  tfidf_vect_ngram.transform(array_of_validation_texts)
+
+    if args.verbose:
+        print(f'TF-IDF Features')
+        print(f'*******')
+        print(f'Train X: {xtrain_tfidf_ngram[0:2]}')
+        print(f'Valid X: {xvalid_tfidf_ngram[0:2]}')
+        print(f'*******')
+
+if args.feature == 'tf_idf_char':
+    # characters level tf-idf
+    tfidf_vect_ngram_chars = TfidfVectorizer(analyzer='char', token_pattern=r'\w{1,}', ngram_range=(2,3), max_features=5000)
+    tfidf_vect_ngram_chars.fit(array_of_texts)
+    if args.verbose:
+        print(f'TF-IDF Vect (after fit)')
+        print(f'{tfidf_vect_ngram_chars.get_feature_names()[0:10]}')
+        print(f'*******')
+
+    xtrain_tfidf_ngram_chars =  tfidf_vect_ngram_chars.transform(array_of_training_texts) 
+    xvalid_tfidf_ngram_chars =  tfidf_vect_ngram_chars.transform(array_of_validation_texts)
+
+    if args.verbose:
+        print(f'TF-IDF Features')
+        print(f'*******')
+        print(f'Train X: {xtrain_tfidf_ngram_chars[0:2]}')
+        print(f'Valid X: {xvalid_tfidf_ngram_chars[0:2]}')
+        print(f'*******')
