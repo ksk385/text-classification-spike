@@ -12,7 +12,9 @@ parser = argparse.ArgumentParser(description='Text Classification.')
 parser.add_argument('--verbose', action='store_true',
                    help='displays debug logging')
 parser.add_argument('--feature', choices=['count', 'tf_idf_word', 'tf_idf_ngram', 'tf_idf_char'],
-                    default='count')
+                    default='count', nargs='+')
+parser.add_argument('--classifier', choices=['naive_bayes'],
+                    default='naive_bayes')
 
 args = parser.parse_args()
 print(args)
@@ -80,7 +82,7 @@ if args.verbose:
     print(f'*******')
 
 
-if args.feature == 'count':
+if 'count' in args.feature:
     # create a count vectorizer object 
     count_vect = CountVectorizer(analyzer='word', token_pattern=r'\w{1,}')
     
@@ -102,7 +104,7 @@ if args.feature == 'count':
         print(f'Valid X: {xvalid_count[0:2]}')
         print(f'*******')
 
-if args.feature == 'tf_idf_word':
+if 'tf_idf_word' in args.feature:
     # word level tf-idf
     tfidf_vect = TfidfVectorizer(analyzer='word', token_pattern=r'\w{1,}', max_features=5000)
     tfidf_vect.fit(array_of_texts)
@@ -122,7 +124,7 @@ if args.feature == 'tf_idf_word':
         print(f'Valid X: {xvalid_tfidf[0:2]}')
         print(f'*******')
 
-if args.feature == 'tf_idf_ngram':
+if 'tf_idf_ngram' in args.feature:
     # ngram level tf-idf 
     tfidf_vect_ngram = TfidfVectorizer(analyzer='word', token_pattern=r'\w{1,}', ngram_range=(2,3), max_features=5000)
     tfidf_vect_ngram.fit(array_of_texts)
@@ -142,7 +144,7 @@ if args.feature == 'tf_idf_ngram':
         print(f'Valid X: {xvalid_tfidf_ngram[0:2]}')
         print(f'*******')
 
-if args.feature == 'tf_idf_char':
+if 'tf_idf_char' in args.feature:
     # characters level tf-idf
     tfidf_vect_ngram_chars = TfidfVectorizer(analyzer='char', token_pattern=r'\w{1,}', ngram_range=(2,3), max_features=5000)
     tfidf_vect_ngram_chars.fit(array_of_texts)
@@ -160,3 +162,37 @@ if args.feature == 'tf_idf_char':
         print(f'Train X: {xtrain_tfidf_ngram_chars[0:2]}')
         print(f'Valid X: {xvalid_tfidf_ngram_chars[0:2]}')
         print(f'*******')
+
+def train_model(classifier, feature_vector_train, label, feature_vector_valid, is_neural_net=False):
+    # fit the training dataset on the classifier
+    classifier.fit(feature_vector_train, label)
+    
+    # predict the labels on validation dataset
+    predictions = classifier.predict(feature_vector_valid)
+    
+    if is_neural_net:
+        predictions = predictions.argmax(axis=-1)
+    
+    return metrics.accuracy_score(predictions, valid_y)
+
+if args.classifier == 'naive_bayes':
+
+    if 'count' in args.feature:
+        # Naive Bayes on Count Vectors
+        accuracy = train_model(naive_bayes.MultinomialNB(), xtrain_count, train_y, xvalid_count)
+        print(f'NB, Count Vectors: {accuracy}')
+
+    if 'tf_idf_word' in args.feature:
+        # Naive Bayes on Word Level TF IDF Vectors
+        accuracy = train_model(naive_bayes.MultinomialNB(), xtrain_tfidf, train_y, xvalid_tfidf)
+        print(f'NB, WordLevel TF-IDF: {accuracy}')
+
+    if 'tf_idf_ngram' in args.feature:
+        # Naive Bayes on Ngram Level TF IDF Vectors
+        accuracy = train_model(naive_bayes.MultinomialNB(), xtrain_tfidf_ngram, train_y, xvalid_tfidf_ngram)
+        print(f'NB, N-Gram Vectors: {accuracy}')
+
+    if 'tf_idf_char' in args.feature:
+        # Naive Bayes on Character Level TF IDF Vectors
+        accuracy = train_model(naive_bayes.MultinomialNB(), xtrain_tfidf_ngram_chars, train_y, xvalid_tfidf_ngram_chars)
+        print(f'NB, CharLevel Vectors: {accuracy}')
